@@ -4,6 +4,7 @@ import psycopg2
 import os
 from configg import host,user,password,db_name
 path = r'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\CONF'
+passz = r'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\PASS'
 bb = 1
 
 try:
@@ -30,6 +31,7 @@ try:
             proshivka varchar(50),
             kod varchar(50),
             password varchar(50),
+            masterpassword varchar(50),
             imei varchar(50),
             server varchar(50));        
             """)
@@ -40,6 +42,7 @@ try:
             proshivka varchar(50),
             kod varchar(50),
             password varchar(50),
+            masterpassword varchar(50),
             imei varchar(50),
             server varchar(50));        
             """)
@@ -143,11 +146,31 @@ try:
                         i += 1
                     else:
                         i += 1
+                passsz = rf'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\PASS\{pribor}'
+                if os.path.exists(passsz):
+                    filess = os.listdir(passsz)
+                    if filess:
+                        filess = [os.path.join(passsz, file) for file in filess]
+                        filess = [file for file in filess if os.path.isfile(file)]
+                    q = max(filess, key=os.path.getctime)
+                    file = open(f'{q}')
+                    a = file.readline()
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            f"""
+                            UPDATE atx
+                                SET masterpassword = '{a}'
+                                WHERE kod = '{pribor}';
+                            """
+                        )
+                else:
+                    continue
         def updateinfo():
             selected_device = devices_listbox.curselection()
             for i in selected_device:
                 pribor = os.listdir(path)[i]
                 pathh = rf'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\CONF\{pribor}'
+                passsz = rf'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\PASS\{pribor}'
                 files = os.listdir(pathh)
                 if files:
                     files = [os.path.join(pathh, file) for file in files]
@@ -223,7 +246,29 @@ try:
                         i += 1
                     else:
                         i += 1
-
+                passsz = rf'C:\Users\Denis\Documents\AutoGraphGSMConf 5.0\PASS\{pribor}'
+                if os.path.exists(passsz):
+                    filess = os.listdir(passsz)
+                    if filess:
+                        filess = [os.path.join(passsz, file) for file in filess]
+                        filess = [file for file in filess if os.path.isfile(file)]
+                    q = max(filess, key=os.path.getctime)
+                    file = open(f'{q}')
+                    a = file.readline()
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            f"""
+                            INSERT INTO shadow SELECT * FROM atx WHERE kod = '{pribor}' AND (masterpassword <> '{a}' OR masterpassword IS NULL);
+                            """
+                        )
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            f"""
+                            UPDATE atx SET masterpassword = '{a}' WHERE NOT EXISTS (SELECT kod FROM atx WHERE kod = '{pribor}' AND masterpassword = '{a}') AND kod = '{pribor}';
+                            """
+                        )
+                else:
+                    continue
         selection_label = Label(newwindow, text = 'Вы выбрали: ',font='Arial 13')
         selection_label.pack(anchor=S)
         devices_listbox.bind("<<ListboxSelect>>", add_selected)
